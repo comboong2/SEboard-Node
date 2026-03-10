@@ -1,0 +1,40 @@
+name: SEBoard Notice Checker
+
+on:
+  schedule:
+    - cron: '*/5 * * * *' # 5분마다 실행
+  workflow_dispatch: # 직접 실행 버튼 활성화
+
+jobs:
+  run-checker:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # 깃허브가 파일을 수정할 권한 (last_post_id 업데이트용)
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          pip install requests python-dotenv
+
+      - name: Run main script
+        env:
+          EMAIL_SENDER: ${{ secrets.EMAIL_SENDER }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+          EMAIL_RECEIVER: ${{ secrets.EMAIL_RECEIVER }}
+          SEBOARD_API_URL: "https://seboard.site/v1/posts"
+          SEBOARD_CATEGORY_ID: "1"
+        run: python main.py
+
+      - name: Update last_post_id
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add last_post_id.txt
+          git commit -m "Auto-update: last_post_id [skip ci]" || echo "No changes"
+          git push
